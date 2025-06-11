@@ -1,0 +1,32 @@
+# Mac filesystem dust
+.DS_Store/
+.DS_Store
+
+# Linux temp files
+*~
+
+# vim
+.*.sw[a-p]
+
+# IntelliJ
+*.iml
+.idea
+!.idea/icon.svg
+
+# Gradle
+!gradle/wrapper/gradle-wrapper.jar
+.gradle
+build
+
+# Leaf
+build-data/dev-imports.txt
+papyrus-archived-patches/todo
+run
+
+papyrus-api/build.gradle.kts
+papyrus-server/build.gradle.kts
+papyrus-server/src/minecraft
+gale-api
+gale-server
+paper-api
+paper-server

@@ -1,0 +1,74 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Taiyou06 <kaandindar21@gmail.com>
+Date: Fri, 8 Nov 2024 04:07:25 +0100
+Subject: [PATCH] Better inline world height
+
+Removed since Leaf 1.21.3, Paper 1.21.3 included it
+
+diff --git a/src/main/java/ca/spottedleaf/moonrise/common/util/WorldUtil.java b/src/main/java/ca/spottedleaf/moonrise/common/util/WorldUtil.java
+index af9623240ff2d389aa7090623f507720e7dbab7d..a286c8989f8c53fb896be7a3a8e15f850ece1df8 100644
+--- a/src/main/java/ca/spottedleaf/moonrise/common/util/WorldUtil.java
++++ b/src/main/java/ca/spottedleaf/moonrise/common/util/WorldUtil.java
+@@ -7,6 +7,14 @@ public final class WorldUtil {
+ 
+     // min, max are inclusive
+ 
++    public static int getMaxSection(final Level world) {
++        return world.getMaxSection() - 1; // getMaxSection() is exclusive
++    }
++
++    public static int getMinSection(final Level world) {
++        return world.getMinSection();
++    }
++
+     public static int getMaxSection(final LevelHeightAccessor world) {
+         return world.getMaxSection() - 1; // getMaxSection() is exclusive
+     }
+diff --git a/src/main/java/net/minecraft/world/level/Level.java b/src/main/java/net/minecraft/world/level/Level.java
+index a34ae9bfda0df2834565dc3ea1fb48f7f2efc099..37783156170e3c0315d043963244f6a42e025576 100644
+--- a/src/main/java/net/minecraft/world/level/Level.java
++++ b/src/main/java/net/minecraft/world/level/Level.java
+@@ -732,12 +732,18 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+     // Paper end - optimise random ticking
+ 
+     // Gale start - Airplane - inline level height
+-    private final int minBuildHeight, levelHeightAccessorMinSection, height, maxBuildHeight, levelHeightAccessorMaxSection;
+-    @Override public final int getMaxBuildHeight() { return this.maxBuildHeight; }
+-    @Override public final int getMinSection() { return this.levelHeightAccessorMinSection; }
+-    @Override public final int getMaxSection() { return this.levelHeightAccessorMaxSection; }
+-    @Override public final int getMinBuildHeight() { return this.minBuildHeight; }
+-    @Override public final int getHeight() { return this.height; }
++    private final int height, minBuildHeight, maxBuildHeight, sectionsCount, levelMinSection, levelMaxSection;
++    @Override public final int getHeight() { return height; }
++    @Override public final int getMinBuildHeight() { return minBuildHeight; }
++    @Override public final int getMaxBuildHeight() { return maxBuildHeight; }
++    @Override public final int getSectionsCount() { return sectionsCount; }
++    @Override public final int getMinSection() { return levelMinSection; }
++    @Override public final int getMaxSection() { return levelMaxSection; }
++    @Override public final boolean isOutsideBuildHeight(BlockPos pos) { final int y = pos.getY(); return y < minBuildHeight || y >= maxBuildHeight; }
++    @Override public final boolean isOutsideBuildHeight(int y) { return y < minBuildHeight || y >= maxBuildHeight; }
++    @Override public final int getSectionIndex(int y) { return (y >> 4) - levelMinSection; }
++    @Override public final int getSectionIndexFromSectionY(int coord) { return coord - levelMinSection; }
++    @Override public final int getSectionYFromSectionIndex(int index) { return index + levelMinSection; }
+     // Gale end - Airplane - inline level height
+     protected Level(WritableLevelData worlddatamutable, ResourceKey<Level> resourcekey, RegistryAccess iregistrycustom, Holder<DimensionType> holder, boolean flag, boolean flag1, long i, int j, org.bukkit.generator.ChunkGenerator gen, org.bukkit.generator.BiomeProvider biomeProvider, org.bukkit.World.Environment env, java.util.function.Function<org.spigotmc.SpigotWorldConfig, io.papermc.paper.configuration.WorldConfiguration> paperWorldConfigCreator, java.util.function.Function<org.spigotmc.SpigotWorldConfig, org.galemc.gale.configuration.GaleWorldConfiguration> galeWorldConfigCreator, java.util.concurrent.Executor executor) { // Paper - create paper world config & Anti-Xray // Gale - Gale configuration // Gale - Purpur - remove vanilla profiler
+         this.spigotConfig = new org.spigotmc.SpigotWorldConfig(((net.minecraft.world.level.storage.PrimaryLevelData) worlddatamutable).getLevelName()); // Spigot
+@@ -761,11 +767,13 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+         final DimensionType dimensionmanager = (DimensionType) holder.value();
+ 
+         // Gale start - Airplane - inline level height
+-        this.minBuildHeight = LevelAccessor.super.getMinBuildHeight();
+-        this.levelHeightAccessorMinSection = LevelAccessor.super.getMinSection();
+-        this.height = LevelAccessor.super.getHeight();
+-        this.maxBuildHeight = LevelAccessor.super.getMaxBuildHeight();
+-        this.levelHeightAccessorMaxSection = LevelAccessor.super.getMaxSection();
++        final DimensionType dim = dimensionmanager;
++        this.height = dim.height();
++        this.minBuildHeight = dim.minY();
++        this.maxBuildHeight = dim.minY() + dim.height();
++        this.sectionsCount = (((dim.minY() + dim.height() - 1) >> 4) + 1) - (dim.minY() >> 4);
++        this.levelMinSection = dim.minY() >> 4;
++        this.levelMaxSection = ((dim.minY() + dim.height() - 1) >> 4) + 1;
+         // Gale end - Airplane - inline level height
+         this.dimension = resourcekey;
+         this.isClientSide = flag;

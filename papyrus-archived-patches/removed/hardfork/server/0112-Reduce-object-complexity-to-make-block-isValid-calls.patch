@@ -1,0 +1,94 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Dreeam <61569423+Dreeam-qwq@users.noreply.github.com>
+Date: Mon, 7 Oct 2024 10:59:17 -0400
+Subject: [PATCH] Reduce object complexity to make block isValid calls more
+ efficient
+
+Removed since Leaf 1.21.3, no need
+
+diff --git a/src/main/java/net/minecraft/world/level/block/entity/BlockEntityType.java b/src/main/java/net/minecraft/world/level/block/entity/BlockEntityType.java
+index dea945a9b278353647dca3ed001158c198dab668..d3a82a012b8bbb9d4c6936dbb40a1994b21956cc 100644
+--- a/src/main/java/net/minecraft/world/level/block/entity/BlockEntityType.java
++++ b/src/main/java/net/minecraft/world/level/block/entity/BlockEntityType.java
+@@ -230,6 +230,7 @@ public class BlockEntityType<T extends BlockEntity> {
+     public static final BlockEntityType<VaultBlockEntity> VAULT = register("vault", VaultBlockEntity::new, Blocks.VAULT);
+     private final BlockEntityType.BlockEntitySupplier<? extends T> factory;
+     public final Set<Block> validBlocks;
++    public final it.unimi.dsi.fastutil.ints.IntOpenHashSet validBlocksByIdHash = new it.unimi.dsi.fastutil.ints.IntOpenHashSet(0); // Leaf - Reduce object complexity to make block isValid calls more efficient
+     private final Holder.Reference<BlockEntityType<?>> builtInRegistryHolder = BuiltInRegistries.BLOCK_ENTITY_TYPE.createIntrusiveHolder(this);
+ 
+     @Nullable
+@@ -251,6 +252,13 @@ public class BlockEntityType<T extends BlockEntity> {
+     private BlockEntityType(BlockEntityType.BlockEntitySupplier<? extends T> factory, Set<Block> blocks) {
+         this.factory = factory;
+         this.validBlocks = blocks;
++
++        // Leaf start - Reduce object complexity to make block isValid calls more efficient
++        for (Block block : blocks) {
++            int idHash = block.getDescriptionIdHash();
++            this.validBlocksByIdHash.add(idHash);
++        }
++        // Leaf end - Reduce object complexity to make block isValid calls more efficient
+     }
+ 
+     @Nullable
+@@ -262,6 +270,13 @@ public class BlockEntityType<T extends BlockEntity> {
+         return this.validBlocks.contains(state.getBlock());
+     }
+ 
++    // Leaf start - Reduce object complexity to make block isValid calls more efficient
++    public boolean isValidByIdHash(BlockState state) {
++        int idHash = state.getBlock().getDescriptionIdHash();
++        return this.validBlocksByIdHash.contains(idHash);
++    }
++    // Leaf end - Reduce object complexity to make block isValid calls more efficient
++
+     @Deprecated
+     public Holder.Reference<BlockEntityType<?>> builtInRegistryHolder() {
+         return this.builtInRegistryHolder;
+diff --git a/src/main/java/net/minecraft/world/level/block/state/BlockBehaviour.java b/src/main/java/net/minecraft/world/level/block/state/BlockBehaviour.java
+index 9b94d8bf3415734776c81297d5d34eea46ad7e78..ca2b57d13128717ebb772dd6523d2909f12560cd 100644
+--- a/src/main/java/net/minecraft/world/level/block/state/BlockBehaviour.java
++++ b/src/main/java/net/minecraft/world/level/block/state/BlockBehaviour.java
+@@ -102,6 +102,7 @@ public abstract class BlockBehaviour implements FeatureElement {
+     public final BlockBehaviour.Properties properties; // Purpur - protected -> public
+     protected final Optional<ResourceKey<LootTable>> drops;
+     protected final String descriptionId;
++    private final int descriptionIdHash; // Leaf - Reduce object complexity to make block isValid calls more efficient
+ 
+     public BlockBehaviour(BlockBehaviour.Properties settings) {
+         this.hasCollision = settings.hasCollision;
+@@ -116,6 +117,7 @@ public abstract class BlockBehaviour implements FeatureElement {
+         this.dynamicShape = settings.dynamicShape;
+         this.requiredFeatures = settings.requiredFeatures;
+         this.properties = settings;
++        this.descriptionIdHash = getDescriptionId().hashCode(); // Leaf - Reduce object complexity to make block isValid calls more efficient
+     }
+ 
+     public BlockBehaviour.Properties properties() {
+@@ -371,6 +373,12 @@ public abstract class BlockBehaviour implements FeatureElement {
+         return this.descriptionId;
+     }
+ 
++    // Leaf start - Reduce object complexity to make block isValid calls more efficient
++    public int getDescriptionIdHash() {
++        return this.descriptionIdHash;
++    }
++    // Leaf end - Reduce object complexity to make block isValid calls more efficient
++
+     protected void onProjectileHit(Level world, BlockState state, BlockHitResult hit, Projectile projectile) {}
+ 
+     protected boolean propagatesSkylightDown(BlockState state) {
+diff --git a/src/main/java/net/minecraft/world/level/chunk/LevelChunk.java b/src/main/java/net/minecraft/world/level/chunk/LevelChunk.java
+index b8246d7255bffc7e12a67772df2ceac1925b2a05..06a969587f25748d4e29036e1b73ab8ff27fe12f 100644
+--- a/src/main/java/net/minecraft/world/level/chunk/LevelChunk.java
++++ b/src/main/java/net/minecraft/world/level/chunk/LevelChunk.java
+@@ -1092,7 +1092,7 @@ public class LevelChunk extends ChunkAccess implements ca.spottedleaf.moonrise.p
+                     try {
+                         BlockState iblockdata = LevelChunk.this.getBlockState(blockposition);
+ 
+-                        if (this.blockEntity.getType().isValid(iblockdata)) {
++                        if (this.blockEntity.getType().isValidByIdHash(iblockdata)) { // Leaf - Reduce object complexity to make block isValid calls more efficient
+                             this.ticker.tick(LevelChunk.this.level, this.blockEntity.getBlockPos(), iblockdata, this.blockEntity);
+                             this.loggedInvalidBlockState = false;
+                         // Paper start - Remove the Block Entity if it's invalid

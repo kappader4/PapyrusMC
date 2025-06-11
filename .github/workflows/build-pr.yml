@@ -1,0 +1,42 @@
+name: Build Pull Request
+
+on:
+  pull_request:
+    branches: [ "ver/1.21.4" ]
+
+jobs:
+  build:
+    runs-on: blacksmith-8vcpu-ubuntu-2204
+    env:
+      GRAALVM_ARGS: "-Dgraal.CompilerConfiguration=enterprise -Dgraal.UsePriorityInlining=true -Dgraal.Vectorization=true -Dgraal.OptDuplication=true --add-modules jdk.incubator.vector"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@main
+
+      - name: Setup java
+        uses: useblacksmith/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Configure Git
+        run: |
+          git config --global user.email "no-reply@github.com"
+          git config --global user.name "Github Actions"
+
+      - name: Apply patches
+        run: ./gradlew -Dorg.gradle.jvmargs="${{ env.GRAALVM_ARGS }}" applyAllPatches --stacktrace --no-daemon
+      - name: Create MojmapPaperclipJar
+        run: ./gradlew -Dorg.gradle.jvmargs="${{ env.GRAALVM_ARGS }}" createMojmapPaperclipJar --stacktrace --no-daemon
+
+      - name: Rename Paperclip JARs
+        run: |
+          mv leaf-server/build/libs/leaf-paperclip-1.21.4-R0.1-SNAPSHOT-mojmap.jar ./leaf-1.21.4.jar
+      - name: Upload Leaf as build artifact
+        uses: actions/upload-artifact@main
+        with:
+          name: Leaf 1.21.4
+          path: ./leaf-1.21.4.jar
