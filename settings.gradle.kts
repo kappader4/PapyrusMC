@@ -11,9 +11,9 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-rootProject.name = "papyrus"
+rootProject.name = "leaf"
 
-for (name in listOf("papyrus-api", "papyrus-server")) {
+for (name in listOf("leaf-api", "leaf-server")) {
     val projName = name.lowercase(Locale.ENGLISH)
     include(projName)
     findProject(":$projName")!!.projectDir = file(name)

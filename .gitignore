@@ -20,12 +20,12 @@ build
 
 # Leaf
 build-data/dev-imports.txt
-papyrus-archived-patches/todo
+leaf-archived-patches/todo
 run
 
-papyrus-api/build.gradle.kts
-papyrus-server/build.gradle.kts
-papyrus-server/src/minecraft
+leaf-api/build.gradle.kts
+leaf-server/build.gradle.kts
+leaf-server/src/minecraft
 gale-api
 gale-server
 paper-api
