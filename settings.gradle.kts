@@ -1,5 +1,12 @@
 import java.util.Locale
 
+include("paper-api")
+include("paper-server")
+include("papyrus-api")
+include("papyrus-server")
+project(":papyrus-api").projectDir = file("papyrus-api")
+project(":papyrus-server").projectDir = file("papyrus-server")
+
 pluginManagement {
     repositories {
         gradlePluginPortal()
