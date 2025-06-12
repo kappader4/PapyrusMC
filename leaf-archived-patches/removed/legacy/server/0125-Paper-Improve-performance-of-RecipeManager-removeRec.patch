@@ -1,0 +1,47 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jake Potrebic <jake.m.potrebic@gmail.com>
+Date: Thu, 31 Oct 2024 20:36:41 -0700
+Subject: [PATCH] Paper: Improve performance of RecipeManager#removeRecipe
+
+Removed since Leaf 1.21.3, Paper 1.21.3 included it
+
+Original license: GPLv3
+Original project: https://github.com/PaperMC/Paper
+Paper pull request: https://github.com/PaperMC/Paper/pull/11547
+
+Co-authored-by: Taiyou06 <kaandindar21@gmail.com>
+
+Ported from Paper 1.21.3
+
+diff --git a/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java b/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
+index de7537c4eacf6fa549f74fd329102a2e4865194a..dea4b6ea87f721e8005640028df7299ef14c23a4 100644
+--- a/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
++++ b/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
+@@ -230,17 +230,20 @@ public class RecipeManager extends SimpleJsonResourceReloadListener {
+     }
+ 
+     // CraftBukkit start
++    // Leaf start - Paper - replace removeRecipe implementation
+     public boolean removeRecipe(ResourceLocation mcKey) {
+-        Iterator<RecipeHolder<?>> iter = this.byType.values().iterator();
+-        while (iter.hasNext()) {
+-            RecipeHolder<?> recipe = iter.next();
+-            if (recipe.id().equals(mcKey)) {
+-                iter.remove();
+-            }
++        final RecipeHolder<?> remove = this.byName.remove(mcKey);
++
++        if (remove == null) {
++            return false;
+         }
+ 
+-        return this.byName.remove(mcKey) != null;
++        final RecipeType<? extends Recipe<?>> type = remove.value().getType();
++        final Collection<RecipeHolder<?>> recipes = (Collection<RecipeHolder<?>>) this.byType((RecipeType) type);
++
++        return recipes.remove(remove);
+     }
++    // Leaf end - Paper - replace removeRecipe implementation
+ 
+     public void clearRecipes() {
+         this.byType = LinkedHashMultimap.create();
